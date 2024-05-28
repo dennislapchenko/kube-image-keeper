@@ -143,6 +143,17 @@ func (a *ImageRewriter) handleContainer(pod *corev1.Pod, container *corev1.Conta
 	sanitizedRegistryName := strings.ReplaceAll(sourceRef.Context().RegistryStr(), ":", "-")
 	image = strings.ReplaceAll(image, sourceRef.Context().RegistryStr(), sanitizedRegistryName)
 
+	if imageIsCached, err := registry.ImageIsCached(image); err != nil || !imageIsCached {
+		msg := "pod's image is not cached, skipping registry rewrite"
+		if err != nil {
+			msg = err.Error()
+		}
+		return RewrittenImage{
+			Original:            container.Image,
+			NotRewrittenBecause: msg,
+		}
+	}
+
 	originalImage := container.Image
 	container.Image = fmt.Sprintf("localhost:%d/%s", a.ProxyPort, image)
 
